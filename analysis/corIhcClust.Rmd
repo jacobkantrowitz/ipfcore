@@ -23,7 +23,6 @@ library(reshape)
 library(GGally)
 library(ellipse)
 library(RColorBrewer)
-
 ```
 
 ```{r package_options, include=F, echo=F}
@@ -49,6 +48,8 @@ calcSignatureScores = function(dat=v,geneids=rownames(dat)) {
   pc1
 }
 myminor = unlist(lapply(c(-3:5),function(o){c(2:9)*10^o}))
+cv = function(x) { sd(x)/mean(x) }
+
 ```
 
 Hypothesis
@@ -89,11 +90,31 @@ ggplot(k8long, aes(diagnosis, score)) +
 
 IHC pairs plot
 -------------
-Examine intercorrelation of IHC variables
+Examine intercorrelation of IHC variables. B cells and eosinophils are highly correlated. CD4s and CD8s are fairly correlated too.
 ```{r ihcpairs, fig.width=8, fig.height=8, echo=F}
-ihc = pheno[,c("Neutrophil","Macrophage_CD68","Bcell_CD79a","CD4","CD8","Eosinophils")]
+ihcNames = c("Neutrophil","Macrophage_CD68","Bcell_CD79a","CD4","CD8","Eosinophils")
+ihc = pheno[,ihcNames]
 ggpairs(ihc, columns=c("Neutrophil","Macrophage_CD68","Bcell_CD79a","CD4","CD8","Eosinophils"),
     diag=list(continuous="densityDiag", discrete="barDiag"), axisLabels="show")
+```
+
+IHC intra vs. inter patient
+-------------
+How consistent are IHC measurements within a given lung relative to overall variation? Apparently B cells vary alot between patients, while neutrophils vary alot within a patient. Macrophages are pretty constant.
+
+```{r intra, fig.width=8, fig.height=6, echo=F}
+ipf = subset(pheno,TISSUE_DIAGNOSIS=="IPF")
+intraMeans = sapply(ihcNames,function(ihcName) {
+ sapply(unique(ipf$PATIENT),function(patient) {
+  patdat = subset(ipf,PATIENT==patient & TISSUE_DIAGNOSIS=="IPF")
+  cv(patdat[,ihcName])
+ })
+})
+interMeans = aggregate(ipf[,ihcNames], by = list(ipf$PATIENT), FUN=mean)
+intra = apply(intraMeans,2,cv)
+inter = apply(interMeans[,c(2:7)],2,cv)
+vs = data.frame(cell=names(intra),intra,inter)
+ggplot(vs, aes(x=inter, y=intra, color=cell)) + geom_point(size=4)
 ```
 
 IHC vs. signatures overall
@@ -130,7 +151,7 @@ Lymphocyte sig and B cells
 The CD79 count and the lymphocyte signature are correlated at r=0.54 within IPF samples.
 
 ```{r cd79Th2, fig.width=8, fig.height=7, echo=F}
-ggplot(k8ihc, aes(x=Bcell_CD79a, y=lymphocyte_4, color=diagnosis)) + geom_point(shape=1) + geom_smooth(method=lm) +
+ggplot(k8ihc, aes(x=Bcell_CD79a, y=lymphocyte_4, color=diagnosis)) + geom_point(shape=1,size=3) + geom_smooth(method=lm) +
  scale_x_log10(minor_breaks = myminor) + scale_y_log10(minor_breaks = myminor)
 ```
 
