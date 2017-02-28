@@ -1,0 +1,49 @@
+---
+title: "BU_All_Analysis_MacrophageCD68_Disease_Interaction"
+author: "Jake Kantrowitz"
+date: "02/27/2017"
+output: html_document
+---
+
+This analysis will focus on the Macrophage CD68 interaction effect with diagnosis
+
+# Setup
+```{r setup}
+# set the repoDir to be the 'ipfcore' repo directory
+repoDir <- "/protected/projects/pulmseq/Genentech_IPF_Analysis/ipfcore/"
+# move to the repoDir so everything can be loaded and saved appropriately
+setwd(repoDir)
+source("analysis/BU_Analysis_Setup.r")
+
+```
+
+# Run the analysis
+```{r analysis}
+
+# plot the variable(s) to use
+plot(dds$Macrophage.CD68. ~ dds$TISSUE_DIAGNOSIS, col=c("grey90", "grey20"),
+     cex.main=2, cex.lab=1.8, cex.axis=1.6,
+     xlab="Diagnosis", ylab="Macrophage CD68",
+     main="Macrophage CD68 by Diagnosis")
+
+# setup the analysis options
+varOfInt <- "Macrophage.CD68."
+
+dds2 <- dds
+m2 <- model.matrix(~TISSUE_DIAGNOSIS + TISSUE_DIAGNOSIS:NESTED_PATIENT + Neutrophil + Bcell.CD79a. + CD4 + CD8 + Eosinophils, colData(dds2))
+m2 <- m2[ ,-which(apply(unname(m2), 2, sum)==0)]
+
+m3 <- model.matrix(~TISSUE_DIAGNOSIS + TISSUE_DIAGNOSIS:NESTED_PATIENT + Neutrophil + Bcell.CD79a. + CD4 + CD8 + Eosinophils + Macrophage.CD68., colData(dds2))
+m3 <- m3[ ,-which(apply(unname(m3), 2, sum)==0)]
+
+
+deseqAnalysis(dds2, mod.full=m3, mod.reduced=m2, varOfInt = varOfInt, fdr = 0.25,
+              filename = "BU_All_FullModel_MacrophageCD68",
+              genesets.save = T, enrichr.run = T, enrichr.fdr = 0.25)
+
+#dds4 <- readRDS("2017-02-27_All_MacrophageCD68_Disease_Interaction.RDS")
+#tempRes <- deseqFinish(dds4, varOfInt = "temp", fdr = 0.05, filename = "BU_All_Analysis_MacrophageCD68_Disease_Interaction",genesets.save = T, enrichr.run = T, enrichr.fdr = .25)
+
+```
+
+
